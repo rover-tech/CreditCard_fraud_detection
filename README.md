@@ -1,68 +1,48 @@
-# Hospital Readmission Prediction
+# Credit Card Fraud Detection
 
 ## 📌 Project Overview
 
-This project predicts whether a diabetic patient will be **readmitted to the hospital within 30 days** using **Logistic Regression with L2 Regularization**.
+Credit card fraud is a major problem in digital transactions. The objective of this project is to build a machine learning model that can identify whether a credit card transaction is **legitimate or fraudulent**.
 
-The project uses the **Diabetes 130-US Hospitals for Years 1999-2008** dataset. The dataset contains patient records collected from multiple hospitals.
-
-The main objective is to use patient information and previous hospital-related information to predict the risk of readmission within 30 days.
+In this project, **XGBoost Classifier** is used to classify transactions. Since fraudulent transactions are much fewer than legitimate transactions, the dataset has a **highly imbalanced class distribution**.
 
 ---
 
-## 🎯 Problem Statement
+## 🎯 Objective
 
-Hospital readmissions can increase healthcare costs and may indicate that a patient requires additional care or follow-up.
+The main objectives of this project are:
 
-In this project, a machine learning model is developed to predict:
-
-* `1` → Patient is readmitted within 30 days
-* `0` → Patient is not readmitted within 30 days
-
-The `readmitted` column from the original dataset is converted into a binary target variable called `readmitted_30`.
+* Detect fraudulent credit card transactions.
+* Understand the class imbalance in the dataset.
+* Perform basic data preprocessing.
+* Analyze transaction patterns using data visualization.
+* Train an XGBoost classification model.
+* Evaluate the model using multiple classification metrics.
 
 ---
 
 ## 📊 Dataset
 
-**Dataset:** Diabetes 130-US Hospitals for Years 1999-2008
+The project uses the **Credit Card Fraud Detection dataset** stored as:
 
-The dataset contains information related to diabetic patients, including:
+```text
+creditcard.csv
+```
 
-* Patient demographics
-* Hospital visits
-* Number of diagnoses
-* Laboratory procedures
-* Procedures performed
-* Medications
-* Emergency visits
-* Outpatient visits
-* Inpatient visits
-* Hospital stay information
+The dataset contains transaction information along with a target column called `Class`.
 
 ### Target Variable
 
-The original `readmitted` column contains three values:
-
-| Value | Meaning                   |
-| ----- | ------------------------- |
-| `<30` | Readmitted within 30 days |
-| `>30` | Readmitted after 30 days  |
-| `NO`  | Not readmitted            |
-
-For this project:
-
 ```text
-<30  → 1
->30  → 0
-NO   → 0
+Class = 0 → Legitimate transaction
+Class = 1 → Fraudulent transaction
 ```
 
-Therefore, the model specifically predicts **30-day readmission**.
+The dataset is highly imbalanced, with legitimate transactions being much more common than fraudulent transactions.
 
 ---
 
-## 🔄 Project Workflow
+## 🔄 Machine Learning Workflow
 
 ```text
 Dataset
@@ -71,207 +51,244 @@ Load Data
    ↓
 Check Missing Values
    ↓
-Replace '?' with Missing Values
-   ↓
-Create 30-Day Readmission Target
-   ↓
-Remove Unnecessary Columns
-   ↓
 Handle Missing Values
+   ↓
+Analyze Class Distribution
    ↓
 Exploratory Data Analysis
    ↓
-Encode Categorical Features
-   ↓
-Train-Test Split
+Feature Analysis
    ↓
 Feature Scaling
    ↓
-Logistic Regression with L2 Regularization
+Train-Test Split
+   ↓
+XGBoost Model
    ↓
 Predictions
    ↓
 Model Evaluation
-   ↓
-ROC-AUC & Confusion Matrix
 ```
 
 ---
 
 ## 🧹 Data Preprocessing
 
-### 1. Missing Values
+The following preprocessing steps are performed:
 
-The dataset uses `?` to represent missing values.
+### 1. Missing Value Check
 
-These values are replaced with missing-value markers.
+The dataset is checked for missing values.
 
-Categorical missing values are filled using the **mode**, while numerical missing values are filled using the **median**.
-
-### 2. Removing Unnecessary Columns
-
-The following columns are removed:
-
-```text
-encounter_id
-patient_nbr
-weight
-payer_code
-medical_specialty
+```python
+df.isnull().sum().sum()
 ```
 
-These columns were not used for the model.
+If missing values are present, rows containing missing values are removed using:
 
-### 3. Categorical Encoding
+```python
+df.dropna(inplace=True)
+```
 
-Categorical features are converted into numerical values using **Label Encoding**.
+### 2. Feature Engineering
+
+A new feature called `hour_of_day` is created from the `Time` column:
+
+```python
+df['hour_of_day'] = (df['Time'] // 3600) % 24
+```
+
+This helps analyze transactions according to the hour of the day.
+
+### 3. Removing Time
+
+The original `Time` column is removed before model training:
+
+```python
+df_cleaned = df.drop(columns=['Time'])
+```
 
 ### 4. Feature Scaling
 
-`StandardScaler` is used to standardize the features before training the Logistic Regression model.
-
----
-
-## 📈 Exploratory Data Analysis
-
-The notebook performs several visualizations to understand the dataset:
-
-* Readmission distribution
-* Box plots of numerical features
-* Patient distribution by age group
-* Correlation matrix
-* Readmission rate by gender
-
-These visualizations help understand the data before building the machine learning model.
-
----
-
-## 🤖 Machine Learning Model
-
-### Logistic Regression
-
-Logistic Regression is used because the target variable is binary.
+The `Amount` feature is standardized using `StandardScaler`:
 
 ```python
-lr_model = LogisticRegression(
-    penalty='l2',
-    max_iter=1000
+scaler = StandardScaler()
+df_cleaned['Amount'] = scaler.fit_transform(df_cleaned[['Amount']])
+```
+
+---
+
+## 🔍 Exploratory Data Analysis
+
+The notebook performs several visualizations to understand the dataset.
+
+### Class Distribution
+
+The number of legitimate and fraudulent transactions is visualized using a bar chart with a logarithmic y-axis.
+
+### Transaction Amount
+
+The distribution of transaction amounts for legitimate and fraudulent transactions is compared using histograms.
+
+### Transactions by Hour
+
+The `hour_of_day` feature is used to visualize the number of legitimate and fraudulent transactions at different hours.
+
+### Feature Correlation
+
+The correlation of different features with the `Class` variable is calculated and visualized.
+
+### Important Features
+
+The four features with the highest absolute correlation with the target are selected and displayed using boxplots.
+
+---
+
+## 🤖 Model Used
+
+### XGBoost Classifier
+
+The project uses **XGBoost (Extreme Gradient Boosting)** for fraud classification.
+
+The model parameters used in the notebook are:
+
+```python
+XGBClassifier(
+    n_estimators=100,
+    max_depth=5,
+    learning_rate=0.1,
+    scale_pos_weight=scale_pos_weight,
+    random_state=42,
+    eval_metric="logloss"
 )
 ```
 
-### L2 Regularization
+### Parameter Explanation
 
-The model uses **L2 regularization**.
-
-L2 regularization adds a penalty for large coefficients and helps reduce overfitting.
-
-The important parameter is:
-
-```python
-penalty='l2'
-```
+* `n_estimators=100` → Number of boosting trees.
+* `max_depth=5` → Maximum depth of each tree.
+* `learning_rate=0.1` → Controls the contribution of each tree.
+* `scale_pos_weight` → Used to give additional importance to the minority fraud class.
+* `random_state=42` → Makes the results reproducible.
+* `eval_metric="logloss"` → Evaluation metric used during training.
 
 ---
 
-## 📊 Train-Test Split
+## ⚖️ Class Imbalance
 
-The dataset is divided into:
+Fraud detection is a highly imbalanced classification problem because fraudulent transactions are much fewer than legitimate transactions.
 
-* **80% training data**
-* **20% testing data**
+The notebook checks the class distribution using:
+
+```python
+print(df["Class"].value_counts())
+```
+
+and also checks the normalized class distribution:
+
+```python
+print(y.value_counts(normalize=True))
+```
+
+The XGBoost model uses `scale_pos_weight` to account for the imbalance.
+
+---
+
+## ✂️ Train-Test Split
+
+The data is divided into training and testing sets using an **80:20 ratio**.
 
 ```python
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
     test_size=0.2,
-    random_state=42
+    random_state=42,
+    stratify=y
 )
 ```
 
-The model is trained using the training data and evaluated using the test data.
+`stratify=y` maintains a similar proportion of legitimate and fraudulent transactions in both sets.
 
 ---
 
-## 📏 Model Evaluation
+## 📈 Model Evaluation
 
-The following evaluation methods are used:
+The model is evaluated using several metrics.
 
-### 1. Accuracy
+### Accuracy
 
-Measures the overall percentage of correct predictions.
+Measures the overall percentage of correctly classified transactions.
 
-```python
-accuracy_score(y_test, y_pred)
-```
+### Precision
 
-### 2. Precision
+Measures how many transactions predicted as fraud were actually fraudulent.
 
-Precision tells us how many of the patients predicted as readmitted were actually readmitted.
+### Recall
 
-```text
-Precision = TP / (TP + FP)
-```
+Measures how many actual fraudulent transactions were correctly detected.
 
-### 3. Recall
+### F1 Score
 
-Recall tells us how many of the patients who were actually readmitted were correctly identified by the model.
+Provides a balance between Precision and Recall.
 
-```text
-Recall = TP / (TP + FN)
-```
-
-### 4. F1 Score
-
-F1-score provides a balance between precision and recall.
-
-### 5. Confusion Matrix
+### Confusion Matrix
 
 The confusion matrix shows:
 
-* True Positive
-* True Negative
-* False Positive
-* False Negative
+```text
+                 Predicted
+                 Legit   Fraud
 
-### 6. ROC-AUC
+Actual Legit       TN      FP
+Actual Fraud       FN      TP
+```
 
-ROC-AUC is used to measure how well the model distinguishes between patients who are and are not readmitted within 30 days.
+Where:
 
-The ROC curve is generated using the predicted probabilities.
+* **TN** → Legitimate transaction correctly classified.
+* **TP** → Fraudulent transaction correctly classified.
+* **FP** → Legitimate transaction incorrectly classified as fraud.
+* **FN** → Fraudulent transaction incorrectly classified as legitimate.
+
+### ROC-AUC
+
+ROC-AUC measures how well the model distinguishes between legitimate and fraudulent transactions.
+
+The notebook also plots the ROC curve using:
+
+```python
+RocCurveDisplay.from_predictions(y_test, y_probability)
+```
 
 ---
 
-## 🏥 Clinical Importance of False Positives and False Negatives
+## 📊 Model Performance
 
-### False Negative
+The model produced the following results in the notebook run:
 
-A **False Negative** occurs when:
+| Metric    |  Score |
+| --------- | -----: |
+| Accuracy  | 99.83% |
+| Precision | 50.00% |
+| Recall    | 84.69% |
+| F1 Score  | 62.88% |
+| ROC-AUC   | 97.34% |
 
-> The model predicts that a patient will not be readmitted within 30 days, but the patient actually is readmitted.
-
-This can be important clinically because a patient who may need additional monitoring or follow-up could be missed.
-
-### False Positive
-
-A **False Positive** occurs when:
-
-> The model predicts that a patient will be readmitted within 30 days, but the patient is not actually readmitted.
-
-This may lead to unnecessary monitoring or use of healthcare resources.
-
-Therefore, both types of errors should be considered when evaluating a hospital readmission model.
+Because the dataset is highly imbalanced, accuracy should not be considered alone. Precision, Recall, F1-score and ROC-AUC provide additional information about the model's fraud-detection performance.
 
 ---
 
 ## 🛠️ Technologies Used
 
 * Python
-* Pandas
 * NumPy
+* Pandas
 * Matplotlib
 * Seaborn
 * Scikit-learn
+* XGBoost
 * Jupyter Notebook
 
 ---
@@ -279,70 +296,57 @@ Therefore, both types of errors should be considered when evaluating a hospital 
 ## 📁 Project Structure
 
 ```text
-Hospital-Readmission-Prediction/
+Credit-Card-Fraud-Detection/
 │
-├── diabetic_data.csv
-├── Hospital_readmission_prediction.ipynb
+├── creditcard.csv
+│
+├── CreditCard_fraud_detection.ipynb
+│
 └── README.md
 ```
 
 ---
 
-## ▶️ How to Run the Project
+## ▶️ How to Run
 
-### 1. Install required libraries
+### 1. Install the required libraries
 
 ```bash
-pip install pandas numpy matplotlib seaborn scikit-learn
+pip install numpy pandas matplotlib seaborn scikit-learn xgboost
 ```
 
 ### 2. Open the notebook
 
-Open:
-
 ```text
-Hospital_readmission_prediction.ipynb
+CreditCard_fraud_detection.ipynb
 ```
 
-using Jupyter Notebook or JupyterLab.
+### 3. Make sure `creditcard.csv` is available at the path used in the notebook.
 
-### 3. Keep the dataset in the same location
+### 4. Run the notebook cells from top to bottom.
 
-Make sure:
+---
 
-```text
-diabetic_data.csv
-```
+## 🔑 Key Learning Outcomes
 
-is available to the notebook.
+Through this project, we learn:
 
-### 4. Run the notebook
-
-Run the cells from top to bottom to perform:
-
-```text
-Data Loading
-→ Preprocessing
-→ EDA
-→ Encoding
-→ Scaling
-→ Model Training
-→ Prediction
-→ Evaluation
-```
+* How credit card fraud detection is treated as a binary classification problem.
+* How to check and handle missing values.
+* How to analyze an imbalanced dataset.
+* How to perform basic exploratory data analysis.
+* How to create a time-based feature such as `hour_of_day`.
+* How to scale numerical features.
+* How XGBoost can be used for classification.
+* How class imbalance can be handled using `scale_pos_weight`.
+* How to interpret a confusion matrix.
+* Why Accuracy alone is not sufficient for fraud detection.
+* How Precision, Recall, F1-score and ROC-AUC are used for evaluation.
 
 ---
 
 ## 📌 Conclusion
 
-This project demonstrates how **Logistic Regression with L2 regularization** can be used to predict 30-day hospital readmission among diabetic patients.
+This project demonstrates the use of **XGBoost for credit card fraud detection**. The dataset is highly imbalanced, making proper preprocessing and evaluation important.
 
-The project covers the complete basic machine learning workflow, including data preprocessing, exploratory data analysis, feature encoding, feature scaling, model training, and evaluation using classification metrics, a confusion matrix, and ROC-AUC.
-
-The results can help demonstrate how machine learning can be applied to healthcare prediction problems while considering the different consequences of false positive and false negative predictions.
-
----
-
-## 👩‍💻 Project Type
-
-**Machine Learning | Healthcare | Binary Classification | Logistic Regression**
+The model is evaluated using Accuracy, Precision, Recall, F1-score, Confusion Matrix and ROC-AUC. The project shows why multiple evaluation metrics are useful when detecting fraudulent transactions in an imbalanced dataset.
